@@ -1,0 +1,393 @@
+
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#10182f">
+<meta name="description" content="Lightning distance estimator and lightning safety education project.">
+<title>Bijli Alert ⚡ | Lightning Safety</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg:#10182f;
+  --card:#1b2745;
+  --text:#f4f7ff;
+  --muted:#b9c6df;
+  --yellow:#ffd84d;
+  --red:#ff7777;
+  --green:#8be3ba;
+}
+* { box-sizing:border-box }
+body {
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:radial-gradient(ellipse at top,#263b69,var(--bg) 65%);
+  color:var(--text);
+  min-height:100vh;
+}
+header {
+  max-width:900px;
+  margin:auto;
+  padding:20px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.brand {font-size:22px;font-weight:800}
+button,select,input {font:inherit}
+select,input {
+  background:#10182f;
+  color:white;
+  border:1px solid #526486;
+  border-radius:10px;
+  padding:12px;
+}
+main {max-width:760px;margin:12px auto;padding:16px}
+.hero {text-align:center;padding:12px 8px 24px}
+.bolt {font-size:65px}
+h1 {font-size:clamp(30px,6vw,46px);margin:12px 0}
+p {line-height:1.6}
+.muted {color:var(--muted)}
+.card {
+  background:var(--card);
+  border:1px solid #405174;
+  padding:22px;
+  border-radius:20px;
+  margin:16px 0;
+  box-shadow:0 12px 35px #0002;
+}
+button {
+  border:0;border-radius:12px;padding:15px 12px;
+  font-weight:700;cursor:pointer;
+}
+button:focus-visible,input:focus-visible,select:focus-visible {
+  outline:3px solid white;outline-offset:3px;
+}
+button:disabled {opacity:.5;cursor:not-allowed}
+.primary {background:var(--yellow);color:#17213b}
+.secondary {background:#334568;color:white}
+.danger {background:#a82f40;color:white}
+.buttons {display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.result {
+  text-align:center;background:#10182f;
+  border-radius:15px;padding:20px;margin-top:18px;
+}
+.big {font-size:clamp(35px,8vw,50px);font-weight:800;color:var(--yellow)}
+.status {font-weight:700;font-size:18px}
+.warning {
+  border-left:4px solid var(--red);
+  background:#492d3a;padding:15px;border-radius:8px;
+  line-height:1.7;
+}
+.field {display:flex;gap:10px;margin-top:12px}
+.field input {min-width:0;width:100%}
+.field button {white-space:nowrap}
+ul {padding-left:22px;line-height:1.8}
+footer {
+  text-align:center;color:var(--muted);
+  padding:24px;font-size:13px;line-height:1.8
+}
+@media(max-width:460px) {
+  main {padding:10px}
+  .card {padding:17px}
+  .buttons {grid-template-columns:1fr}
+  header {padding:15px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">⚡ Bijli Alert</div>
+  <label>
+    <span id="languageLabel">भाषा</span>
+    <select id="language" aria-label="Language">
+      <option value="hi">हिंदी</option>
+      <option value="en">English</option>
+    </select>
+  </label>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="bolt" aria-hidden="true">⛈️</div>
+    <h1 id="title">बिजली कितनी दूर है?</h1>
+    <p class="muted" id="subtitle">
+      चमक और गरज के बीच का समय मापकर दूरी का अनुमान लगाएँ।
+    </p>
+  </section>
+
+  <section class="card">
+    <h2 id="timerHeading">⏱️ लाइव टाइमर</h2>
+    <p id="timerHelp" class="muted">
+      बिजली चमकते ही पहला बटन दबाएँ। गरज सुनते ही दूसरा बटन दबाएँ।
+    </p>
+    <div class="buttons">
+      <button class="primary" id="start">⚡ बिजली चमकी</button>
+      <button class="secondary" id="thunder" disabled>🔊 गरज सुनाई दी</button>
+    </div>
+    <p id="timerStatus" role="status" aria-live="polite">
+      टाइमर शुरू करने के लिए तैयार।
+    </p>
+
+    <div class="result" aria-live="polite">
+      <div id="distanceLabel">अनुमानित दूरी</div>
+      <div class="big" id="distance">— km</div>
+      <div id="seconds">समय: — सेकंड</div>
+      <p class="status" id="resultStatus">अभी कोई माप नहीं है</p>
+    </div>
+
+    <h3 id="manualHeading">या समय खुद दर्ज करें</h3>
+    <p class="muted" id="manualHelp">
+      चमक और गरज के बीच बीते सेकंड लिखें।
+    </p>
+    <form id="manualForm">
+      <div class="field">
+        <input id="manualSeconds" type="number"
+          min="0.1" max="300" step="0.1"
+          placeholder="उदाहरण: 6.5"
+          aria-label="समय सेकंड में" required>
+        <button class="primary" type="submit" id="calculate">
+          गणना करें
+        </button>
+      </div>
+    </form>
+    <button class="secondary" id="reset" style="width:100%;margin-top:12px">
+      ↻ रीसेट
+    </button>
+  </section>
+
+  <section class="card">
+    <h2 id="safetyHeading">🛡️ बिजली सुरक्षा</h2>
+    <div class="warning" id="safetyMessage">
+      गरज सुनाई देना बिजली के खतरे का संकेत है।
+      तुरंत मजबूत इमारत या बंद छत वाली गाड़ी में शरण लें।
+      कोई भी अनुमानित दूरी सुरक्षित होने की गारंटी नहीं है।
+    </div>
+    <ul id="safetyList">
+      <li>खुले मैदान, छत और ऊँचे स्थानों से दूर रहें।</li>
+      <li>अकेले पेड़, बिजली के खंभे और पानी से दूर रहें।</li>
+      <li>आखिरी गरज के बाद कम-से-कम 30 मिनट तक सुरक्षित जगह पर रहें।</li>
+      <li>घर के अंदर खिड़कियों, तार वाले उपकरणों और नलसाजी से दूर रहें।</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2 id="aboutHeading">ℹ️ यह कैसे काम करता है?</h2>
+    <p id="aboutText">
+      प्रकाश ध्वनि से बहुत तेज चलता है। इसलिए चमक पहले दिखाई देती है
+      और गरज बाद में सुनाई देती है। ध्वनि की अनुमानित गति 0.343 km/s
+      मानकर दूरी निकाली जाती है।
+    </p>
+    <p class="muted" id="disclaimer">
+      यह शैक्षणिक अनुमान है, बिजली पहचानने वाला सेंसर या लाइव मौसम
+      चेतावनी सेवा नहीं। हवा, तापमान, भूभाग और मानवीय प्रतिक्रिया
+      से परिणाम प्रभावित हो सकता है।
+    </p>
+  </section>
+</main>
+
+<footer>
+  <div id="footerText">
+    Bijli Alert · Student Web Project · HTML, CSS & JavaScript
+  </div>
+  <div>⚠️ दूरी चाहे जितनी हो, गरज सुनाई दे तो सुरक्षित जगह पर जाएँ।</div>
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+let startAt = null;
+let running = false;
+let language = "hi";
+let intervalId = null;
+
+const words = {
+hi: {
+language:"भाषा",title:"बिजली कितनी दूर है?",
+subtitle:"चमक और गरज के बीच का समय मापकर दूरी का अनुमान लगाएँ।",
+timerHeading:"⏱️ लाइव टाइमर",
+timerHelp:"बिजली चमकते ही पहला बटन दबाएँ। गरज सुनते ही दूसरा बटन दबाएँ।",
+start:"⚡ बिजली चमकी",thunder:"🔊 गरज सुनाई दी",
+ready:"टाइमर शुरू करने के लिए तैयार।",
+started:"टाइमर चल रहा है। गरज सुनते ही बटन दबाएँ।",
+distanceLabel:"अनुमानित दूरी",
+seconds:"समय",noResult:"अभी कोई माप नहीं है",
+manualHeading:"या समय खुद दर्ज करें",
+manualHelp:"चमक और गरज के बीच बीते सेकंड लिखें।",
+placeholder:"उदाहरण: 6.5",calculate:"गणना करें",reset:"↻ रीसेट",
+safetyHeading:"🛡️ बिजली सुरक्षा",
+safetyMessage:"गरज सुनाई देना बिजली के खतरे का संकेत है। तुरंत मजबूत इमारत या बंद छत वाली गाड़ी में शरण लें। कोई भी अनुमानित दूरी सुरक्षित होने की गारंटी नहीं है।",
+tips:[
+"खुले मैदान, छत और ऊँचे स्थानों से दूर रहें।",
+"अकेले पेड़, बिजली के खंभे और पानी से दूर रहें।",
+"आखिरी गरज के बाद कम-से-कम 30 मिनट तक सुरक्षित जगह पर रहें।",
+"घर के अंदर खिड़कियों, तार वाले उपकरणों और नलसाजी से दूर रहें।"
+],
+aboutHeading:"ℹ️ यह कैसे काम करता है?",
+aboutText:"प्रकाश ध्वनि से बहुत तेज चलता है। इसलिए चमक पहले दिखाई देती है और गरज बाद में सुनाई देती है। ध्वनि की अनुमानित गति 0.343 km/s मानकर दूरी निकाली जाती है।",
+disclaimer:"यह शैक्षणिक अनुमान है, बिजली पहचानने वाला सेंसर या लाइव मौसम चेतावनी सेवा नहीं। हवा, तापमान, भूभाग और मानवीय प्रतिक्रिया से परिणाम प्रभावित हो सकता है।",
+footerText:"Bijli Alert · Student Web Project · HTML, CSS & JavaScript",
+tooShort:"समय बहुत कम है। सही समय दोबारा मापें।",
+tooLong:"समय 300 सेकंड से अधिक है। सही माप दर्ज करें।",
+measured:"माप पूरा हुआ",
+danger:"⚠️ गरज सुनाई दी है: सुरक्षित जगह पर जाएँ!",
+error:"कृपया 0.1 से 300 सेकंड के बीच मान दर्ज करें।"
+},
+en: {
+language:"Language",title:"How far away is the lightning?",
+subtitle:"Estimate distance using the time between a flash and thunder.",
+timerHeading:"⏱️ Live timer",
+timerHelp:"Press the first button at the flash and the second when you hear thunder.",
+start:"⚡ Lightning flash",thunder:"🔊 Heard thunder",
+ready:"Ready to start the timer.",
+started:"Timer running. Press the button when thunder is heard.",
+distanceLabel:"Estimated distance",
+seconds:"Time",noResult:"No measurement yet",
+manualHeading:"Or enter the time manually",
+manualHelp:"Enter the seconds between flash and thunder.",
+placeholder:"Example: 6.5",calculate:"Calculate",reset:"↻ Reset",
+safetyHeading:"🛡️ Lightning safety",
+safetyMessage:"Hearing thunder indicates a lightning risk. Take shelter in a substantial building or a hard-topped enclosed vehicle. No estimated distance guarantees safety.",
+tips:[
+"Stay away from open fields, rooftops and high ground.",
+"Avoid isolated trees, power poles and water.",
+"Remain sheltered for at least 30 minutes after the last thunder.",
+"Indoors, stay away from windows, corded equipment and plumbing."
+],
+aboutHeading:"ℹ️ How does it work?",
+aboutText:"Light travels much faster than sound, so the flash arrives before thunder. The estimate uses an approximate sound speed of 0.343 km/s.",
+disclaimer:"This is an educational estimate, not a lightning sensor or live weather warning service. Wind, temperature, terrain and human reaction time can affect the result.",
+footerText:"Bijli Alert · Student Web Project · HTML, CSS & JavaScript",
+tooShort:"The time is unusually short. Measure again carefully.",
+tooLong:"Time exceeds 300 seconds. Please enter a valid measurement.",
+measured:"Measurement complete",
+danger:"⚠️ Thunder heard: seek safe shelter!",
+error:"Enter a value between 0.1 and 300 seconds."
+}
+};
+
+function stopInterval() {
+  if (intervalId !== null) clearInterval(intervalId);
+  intervalId = null;
+}
+
+function showTime(seconds) {
+  $("seconds").textContent =
+    words[language].seconds + ": " + seconds.toFixed(1) + " s";
+}
+
+function estimate(seconds) {
+  if (!Number.isFinite(seconds) || seconds <= 0 || seconds > 300) {
+    $("timerStatus").textContent = words[language].error;
+    return;
+  }
+
+  const km = seconds * 0.343;
+  $("distance").textContent = km.toFixed(2) + " km";
+  showTime(seconds);
+  $("resultStatus").textContent = words[language].danger;
+  $("timerStatus").textContent = words[language].measured;
+  $("safetyMessage").textContent = words[language].safetyMessage;
+}
+
+function startTimer() {
+  stopInterval();
+  startAt = performance.now();
+  running = true;
+  $("start").disabled = true;
+  $("thunder").disabled = false;
+  $("timerStatus").textContent = words[language].started;
+  $("distance").textContent = "— km";
+  $("seconds").textContent = words[language].seconds + ": …";
+  $("resultStatus").textContent = words[language].danger;
+
+  intervalId = setInterval(() => {
+    if (!running || startAt === null) return;
+    showTime((performance.now() - startAt) / 1000);
+  }, 100);
+}
+
+function stopTimer() {
+  if (!running || startAt === null) {
+    $("timerStatus").textContent = words[language].ready;
+    return;
+  }
+  const seconds = (performance.now() - startAt) / 1000;
+  running = false;
+  startAt = null;
+  stopInterval();
+  $("start").disabled = false;
+  $("thunder").disabled = true;
+  estimate(seconds);
+}
+
+function resetApp() {
+  running = false;
+  startAt = null;
+  stopInterval();
+  $("start").disabled = false;
+  $("thunder").disabled = true;
+  $("distance").textContent = "— km";
+  $("seconds").textContent = words[language].seconds + ": —";
+  $("resultStatus").textContent = words[language].noResult;
+  $("timerStatus").textContent = words[language].ready;
+  $("manualSeconds").value = "";
+}
+
+function renderLanguage() {
+  const w = words[language];
+  document.documentElement.lang = language;
+  const map = {
+    languageLabel:"language",title:"title",subtitle:"subtitle",
+    timerHeading:"timerHeading",timerHelp:"timerHelp",start:"start",
+    thunder:"thunder",distanceLabel:"distanceLabel",
+    manualHeading:"manualHeading",manualHelp:"manualHelp",
+    calculate:"calculate",reset:"reset",safetyHeading:"safetyHeading",
+    safetyMessage:"safetyMessage",aboutHeading:"aboutHeading",
+    aboutText:"aboutText",disclaimer:"disclaimer",footerText:"footerText"
+  };
+  Object.entries(map).forEach(([id,key]) => {
+    $(id).textContent = w[key];
+  });
+  $("manualSeconds").placeholder = w.placeholder;
+  $("timerStatus").textContent = w.ready;
+  $("resultStatus").textContent = w.noResult;
+  $("safetyList").replaceChildren(
+    ...w.tips.map(t => {
+      const li = document.createElement("li");
+      li.textContent = t;
+      return li;
+    })
+  );
+  if (!running && $("distance").textContent === "— km") {
+    $("seconds").textContent = w.seconds + ": —";
+  }
+}
+
+$("start").addEventListener("click", startTimer);
+$("thunder").addEventListener("click", stopTimer);
+$("reset").addEventListener("click", resetApp);
+
+$("manualForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const value = Number($("manualSeconds").value);
+  if (!Number.isFinite(value) || value <= 0 || value > 300) {
+    $("timerStatus").textContent = words[language].error;
+    return;
+  }
+  if (value < 1) {
+    $("timerStatus").textContent = words[language].tooShort;
+  }
+  estimate(value);
+});
+
+$("language").addEventListener("change", event => {
+  language = event.target.value;
+  renderLanguage();
+});
+
+renderLanguage();
+</script>
+</body>
+</html>
